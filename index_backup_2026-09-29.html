@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1f6feb">
+<link rel="manifest" href="manifest.json">
+<title>Controle de Medicamentos</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#202124;background:#f4f6f8}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f8}
+header{background:#1f6feb;color:#fff;padding:18px 16px}
+header h1{margin:0;font-size:23px}header p{margin:6px 0 0;opacity:.95}
+main{padding:14px;max-width:700px;margin:auto}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0001}
+h2{font-size:19px;margin:0 0 12px}
+label{font-size:14px;font-weight:bold}
+input:not([type=checkbox]){width:100%;padding:12px;margin:6px 0 10px;border:1px solid #ccc;border-radius:9px;font-size:16px;background:#fff}
+button{border:0;border-radius:10px;padding:10px 14px;font-weight:bold;cursor:pointer;font-size:14px}
+button:focus,input:focus{outline:2px solid #8ab4f8;outline-offset:1px}
+.add{background:#1f6feb;color:#fff;width:100%;font-size:16px}
+.take{background:#dc3545;color:#fff}.taken{background:#198754;color:#fff}
+.secondary{background:#e8eef7;color:#1f3b64}
+.remove{background:#f1f1f1;color:#555;padding:5px 8px;margin-left:4px;font-size:12px}
+.med{border-top:1px solid #eee;padding:14px 0}.med:first-child{border-top:0}
+.med-title{font-weight:bold;font-size:17px}.med-sub{color:#666;margin:5px 0 10px}
+.times{display:flex;flex-wrap:wrap;gap:8px}.time-chip{background:#eef3f8;border-radius:9px;padding:8px 10px}
+.dose{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #eee;padding:14px 0}.dose:first-child{border-top:0}
+.info{min-width:0}.info strong{display:block;font-size:16px;overflow-wrap:anywhere}.info span{display:block;margin-top:4px;color:#666;overflow-wrap:anywhere}
+.small{font-size:13px;color:#777;margin:5px 0}.empty{color:#666}
+.stock-alert{margin-top:8px;padding:9px 10px;border-radius:9px;font-size:13px;font-weight:bold;background:#fff3cd;color:#856404}
+.stock-zero{background:#f8d7da;color:#842029}
+.time-row{display:flex;gap:8px;align-items:center}.time-row input{flex:1;min-width:0}
+.weekdays{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 12px}
+.weekdays label{font-weight:normal;display:flex;align-items:center;gap:7px}
+.status{display:none;padding:10px;border-radius:8px;margin:8px 0;font-size:14px;overflow-wrap:anywhere}
+.status.error{display:block;background:#f8d7da;color:#842029}.status.ok{display:block;background:#d1e7dd;color:#0f5132}
+.history-nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.history-nav strong{font-size:15px}
+.footer-note{font-size:12px;color:#666;line-height:1.4}
+</style>
+</head>
+<body>
+<header><h1>💊 Controle de Medicamentos</h1><p id="date"></p></header>
+<main>
+  <div id="globalStatus" class="status" role="status" aria-live="polite"></div>
+  <section class="card"><h2>📅 Doses de hoje</h2><div id="today"><p class="empty">Carregando doses...</p></div></section>
+  <section class="card"><h2>📖 Histórico</h2><div id="history"><p class="empty">Carregando histórico...</p></div></section>
+  <section class="card"><h2>💊 Medicamentos cadastrados</h2><div id="meds"><p class="empty">Carregando medicamentos...</p></div></section>
+  <section class="card">
+    <h2>➕ Cadastrar medicamento</h2>
+    <form id="medicineForm">
+      <label for="name">Nome</label><input id="name" placeholder="Ex.: Medicamento" autocomplete="off" required>
+      <label for="dose">Dose</label><input id="dose" placeholder="Ex.: 1 comprimido" required>
+      <label>Horários das doses</label>
+      <div id="times"><div class="time-row"><input class="time" type="time" aria-label="Horário da dose"><button type="button" class="remove" onclick="removeTime(this)" aria-label="Remover horário">✕</button></div></div>
+      <button type="button" class="secondary" onclick="addTime()" style="margin:4px 0 12px">+ Adicionar horário</button>
+      <label for="stock">Quantidade em estoque (doses, opcional)</label><input id="stock" type="number" min="0" step="1" placeholder="Ex.: 30">
+      <label for="startDate">Data de início</label><input id="startDate" type="date">
+      <label for="endDate">Data de término (opcional)</label><input id="endDate" type="date">
+      <label>Dias da semana</label>
+      <div id="weekdays" class="weekdays">
+        <label><input type="checkbox" value="1" checked> Segunda</label>
+        <label><input type="checkbox" value="2" checked> Terça</label>
+        <label><input type="checkbox" value="3" checked> Quarta</label>
+        <label><input type="checkbox" value="4" checked> Quinta</label>
+        <label><input type="checkbox" value="5" checked> Sexta</label>
+        <label><input type="checkbox" value="6" checked> Sábado</label>
+        <label><input type="checkbox" value="0" checked> Domingo</label>
+      </div>
+      <label for="note">Observação</label><input id="note" placeholder="Ex.: após o jantar">
+      <button class="add" type="submit">Adicionar medicamento</button>
+    </form>
+    <div id="formStatus" class="status" role="status" aria-live="polite"></div>
+    <p class="footer-note">O aplicativo apenas registra o esquema informado por você. Ele não altera nem recomenda doses.</p>
+  </section>
+</main>
+<script>
+"use strict";
+const KEY = "medicamentos_v3";
+const TAKEN = "medicamentos_taken_v3";
+let historyDate = todayKey();
+
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function showStatus(id,message,type="error"){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=message;
+  el.className="status "+type;
+}
+function clearStatus(id){
+  const el=document.getElementById(id);
+  if(el){el.textContent="";el.className="status";}
+}
+function safeGet(key,fallback){
+  try{
+    const raw=localStorage.getItem(key);
+    return raw===null?fallback:JSON.parse(raw);
+  }catch(e){
+    console.error("Falha ao ler armazenamento",key,e);
+    return fallback;
+  }
+}
+function load(){
+  const data=safeGet(KEY,[]);
+  if(!Array.isArray(data)) return [];
+  return data.filter(m=>m&&typeof m==="object").map((m,i)=>{
+    const times=Array.isArray(m.times)?m.times:(Array.isArray(m.horarios)?m.horarios:[]);
+    const days=Array.isArray(m.weekdays)?m.weekdays.map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<=6):[0,1,2,3,4,5,6];
+    let stock=m.stock;
+    if(stock!==null&&stock!==undefined&&stock!==""&&!Number.isFinite(Number(stock))) stock=null;
+    else if(stock!==null&&stock!==undefined&&stock!=="") stock=Math.max(0,Number(stock));
+    else stock=null;
+    return {
+      ...m,
+      id:String(m.id||("m_migrado_"+i+"_"+Date.now())),
+      name:String(m.name||m.nome||"Medicamento"),
+      dose:String(m.dose||m.dosagem||""),
+      note:String(m.note||m.observacao||""),
+      times:times.map(t=>String(t)).filter(t=>/^\d{2}:\d{2}$/.test(t)).sort(),
+      startDate:String(m.startDate||m.dataInicio||todayKey()),
+      endDate:String(m.endDate||m.dataTermino||""),
+      weekdays:days.length?days:[0,1,2,3,4,5,6],
+      stock
+    };
+  });
+}
+function save(list){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(list));
+    const verify=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(!Array.isArray(verify)) throw new Error("A gravação não foi confirmada.");
+    return true;
+  }catch(e){
+    console.error("Erro ao salvar medicamentos",e);
+    showStatus("globalStatus","Não foi possível salvar os medicamentos neste navegador. Não limpe os dados do aplicativo. Detalhe: "+e.message);
+    return false;
+  }
+}
+function loadTaken(){
+  const data=safeGet(TAKEN,{});
+  if(!data||typeof data!=="object"||Array.isArray(data)){
+    try{
+      const raw=localStorage.getItem(TAKEN);
+      if(raw!==null&&localStorage.getItem(TAKEN+"_backup")===null) localStorage.setItem(TAKEN+"_backup",raw);
+    }catch(e){}
+    return {};
+  }
+  return data;
+}
+function saveTaken(data){
+  try{localStorage.setItem(TAKEN,JSON.stringify(data));return true;}
+  catch(e){showStatus("globalStatus","Não foi possível salvar o histórico de doses: "+e.message);return false;}
+}
+/* Migra formatos antigos sem apagar as chaves de origem. */
+function migrateOldData(){
+  try{
+    if(localStorage.getItem(KEY)===null){
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k||k===KEY||k===TAKEN||k.endsWith("_backup"))continue;
+        const value=safeGet(k,null);
+        if(Array.isArray(value)&&value.some(x=>x&&typeof x==="object"&&(x.name||x.nome)&&(x.times||x.horarios||x.schedule))){
+          const converted=value.map((x,i)=>({
+            id:String(x.id||("m_migrado_"+Date.now()+"_"+i)),
+            name:String(x.name||x.nome||"Medicamento"),
+            dose:String(x.dose||x.dosagem||""),
+            note:String(x.note||x.observacao||""),
+            times:Array.isArray(x.times)?x.times:(Array.isArray(x.horarios)?x.horarios:(Array.isArray(x.schedule)?x.schedule:[])),
+            startDate:x.startDate||x.dataInicio||todayKey(),
+            endDate:x.endDate||x.dataTermino||"",
+            weekdays:Array.isArray(x.weekdays)?x.weekdays:[0,1,2,3,4,5,6],
+            stock:x.stock===undefined?null:x.stock
+          }));
+          localStorage.setItem(KEY,JSON.stringify(converted));
+          break;
+        }
+      }
+    }
+    if(localStorage.getItem(TAKEN)===null){
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k||k===KEY||k===TAKEN||k.endsWith("_backup"))continue;
+        const value=safeGet(k,null);
+        if(value&&typeof value==="object"&&!Array.isArray(value)&&Object.keys(value).some(x=>x.includes("|"))){
+          localStorage.setItem(TAKEN,JSON.stringify(value));break;
+        }
+      }
+    }
+  }catch(e){console.warn("Migração não concluída; dados originais mantidos.",e);}
+}
+function addTime(){
+  const row=document.createElement("div");
+  row.className="time-row";
+  row.innerHTML='<input class="time" type="time" aria-label="Horário da dose"><button type="button" class="remove" onclick="removeTime(this)" aria-label="Remover horário">✕</button>';
+  document.getElementById("times").appendChild(row);
+}
+function removeTime(btn){
+  const rows=document.querySelectorAll("#times .time-row");
+  if(rows.length<=1){rows[0].querySelector(".time").value="";return;}
+  btn.parentElement.remove();
+}
+function addMedicine(event){
+  if(event)event.preventDefault();
+  clearStatus("formStatus");clearStatus("globalStatus");
+  const name=document.getElementById("name").value.trim();
+  const dose=document.getElementById("dose").value.trim();
+  const note=document.getElementById("note").value.trim();
+  const stockValue=document.getElementById("stock").value;
+  const stock=stockValue===""?null:Number.parseInt(stockValue,10);
+  const startDate=document.getElementById("startDate").value||todayKey();
+  const endDate=document.getElementById("endDate").value||"";
+  const weekdays=[...document.querySelectorAll("#weekdays input:checked")].map(x=>Number(x.value)).sort((a,b)=>a-b);
+  const times=[...document.querySelectorAll("#times .time")].map(x=>x.value).filter(Boolean).sort();
+  if(!name||!dose||!times.length){showStatus("formStatus","Preencha nome, dose e pelo menos um horário.");return;}
+  if(!weekdays.length){showStatus("formStatus","Selecione pelo menos um dia da semana.");return;}
+  if(stockValue!==""&&(!Number.isInteger(stock)||stock<0)){showStatus("formStatus","Informe um estoque inteiro igual ou maior que zero.");return;}
+  if(endDate&&endDate<startDate){showStatus("formStatus","A data de término não pode ser anterior à data de início.");return;}
+  const list=load();
+  const med={id:"m_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),name,dose,note,times,startDate,endDate,weekdays,stock};
+  list.push(med);
+  if(!save(list))return;
+  /* Renderiza a lista principal primeiro e em bloco independente do histórico. */
+  renderMedicines();
+  try{renderToday();}catch(e){console.error(e);showStatus("globalStatus","Medicamento salvo. Houve um erro ao atualizar as doses de hoje; a lista de medicamentos foi mantida.");}
+  try{renderHistory();}catch(e){console.error(e);document.getElementById("history").innerHTML='<p class="empty">Não foi possível atualizar o histórico agora. Os medicamentos continuam salvos.</p>';}
+  document.getElementById("medicineForm").reset();
+  document.querySelectorAll("#weekdays input").forEach(x=>x.checked=true);
+  document.getElementById("times").innerHTML='<div class="time-row"><input class="time" type="time" aria-label="Horário da dose"><button type="button" class="remove" onclick="removeTime(this)" aria-label="Remover horário">✕</button></div>';
+  showStatus("formStatus","Medicamento cadastrado e salvo.", "ok");
+}
+function formatDateKey(key){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(key||"")))return "—";
+  const [y,m,d]=key.split("-");
+  return d+"/"+m+"/"+y;
+}
+function shiftDate(key,delta){
+  const d=new Date(key+"T12:00:00");
+  d.setDate(d.getDate()+delta);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function weekdayOnDate(med,date){
+  const d=new Date(date+"T12:00:00").getDay();
+  const days=Array.isArray(med.weekdays)?med.weekdays.map(Number):[0,1,2,3,4,5,6];
+  return days.includes(d);
+}
+function activeOnDate(med,date){
+  const start=med.startDate||"0000-01-01", end=med.endDate||"9999-12-31";
+  return date>=start&&date<=end&&weekdayOnDate(med,date);
+}
+function weekdayNames(days){
+  const names=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const arr=Array.isArray(days)?days.map(Number).filter(d=>Number.isInteger(d)&&d>=0&&d<=6):[0,1,2,3,4,5,6];
+  return arr.sort((a,b)=>a-b).map(d=>names[d]).join(" · ");
+}
+function takenTime(record){
+  if(!record)return "";
+  const value=typeof record==="object"?record.takenAt:record;
+  if(!value)return "";
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?"":d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+function renderToday(){
+  const d=new Date();
+  document.getElementById("date").textContent=d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+  const list=load(), t=loadTaken(), key=todayKey(), doses=[];
+  list.forEach(med=>{
+    if(!med||!Array.isArray(med.times)||!activeOnDate(med,key))return;
+    med.times.forEach((time,index)=>doses.push({med,time,index}));
+  });
+  doses.sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+  const box=document.getElementById("today");
+  box.innerHTML=doses.length?doses.map(x=>{
+    const id=x.med.id+"|"+x.index+"|"+key, done=!!t[id];
+    const stockText=x.med.stock!==null&&x.med.stock!==undefined?" · 📦 Estoque: "+x.med.stock:"";
+    const noteText=x.med.note?" · "+x.med.note:"";
+    const takenText=done&&takenTime(t[id])?" · Tomado às "+takenTime(t[id]):"";
+    return '<div class="dose"><div class="info"><strong>'+esc(x.time)+' — '+esc(x.med.name)+'</strong><span>'+esc(x.med.dose)+esc(noteText)+esc(stockText)+esc(takenText)+'</span></div><button class="'+(done?"taken":"take")+'" onclick="toggleTaken(\''+esc(x.med.id)+'\','+x.index+')">'+(done?"✓ TOMEI":"TOMEI")+'</button></div>';
+  }).join(""):'<p class="empty">Nenhum medicamento programado para hoje.</p>';
+}
+function renderHistory(){
+  const list=load(), t=loadTaken(), date=historyDate, doses=[];
+  list.forEach(med=>{
+    if(!med||!Array.isArray(med.times)||!activeOnDate(med,date))return;
+    med.times.forEach((time,index)=>{
+      const id=med.id+"|"+index+"|"+date;
+      doses.push({med,time,index,done:!!t[id],record:t[id]});
+    });
+  });
+  doses.sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+  const box=document.getElementById("history");
+  const nav='<div class="history-nav"><button class="secondary" onclick="changeHistoryDate(-1)" aria-label="Dia anterior">‹ Anterior</button><strong>'+formatDateKey(date)+'</strong><button class="secondary" onclick="changeHistoryDate(1)" aria-label="Próximo dia">Próximo ›</button></div>';
+  if(!doses.length){box.innerHTML=nav+'<p class="empty">Nenhuma dose programada para esta data.</p><div style="text-align:center"><button class="secondary" onclick="setHistoryDate(todayKey())">Hoje</button></div>';return;}
+  box.innerHTML=nav+doses.map(e=>{
+    const time=takenTime(e.record);
+    return '<div class="dose"><div class="info"><strong>'+esc(e.time)+' — '+esc(e.med.name)+'</strong><span>'+esc(e.med.dose)+(e.done&&time?' · Tomado às '+esc(time):'')+'</span></div><span style="font-weight:bold;color:'+(e.done?'#198754':'#dc3545')+'">'+(e.done?'✓ Tomada':'Pendente')+'</span></div>';
+  }).join("")+'<div style="margin-top:12px;text-align:center"><button class="secondary" onclick="setHistoryDate(todayKey())">Hoje</button></div>';
+}
+function changeHistoryDate(delta){historyDate=shiftDate(historyDate,delta);try{renderHistory();}catch(e){console.error(e);showStatus("globalStatus","Não foi possível atualizar o histórico.");}}
+function setHistoryDate(date){historyDate=date;renderHistory();}
+function stockAlert(med){
+  if(med.stock===null||med.stock===undefined)return "";
+  const stock=Number(med.stock);
+  if(stock<=0)return '<div class="stock-alert stock-zero">🚨 Estoque zerado</div>';
+  if(stock<=5)return '<div class="stock-alert">⚠️ Estoque baixo — restam '+stock+' dose'+(stock===1?'':'s')+'.</div>';
+  return "";
+}
+function renderMedicines(){
+  const list=load();
+  const box=document.getElementById("meds");
+  const displayList=list.filter(m=>m&&typeof m==="object");
+  if(!displayList.length){box.innerHTML='<p class="empty">Nenhum medicamento cadastrado.</p>';return;}
+  box.innerHTML=displayList.map(m=>{
+    const times=Array.isArray(m.times)?m.times:[];
+    const stock=m.stock!==null&&m.stock!==undefined;
+    const stockHtml=stock?'<div class="small">📦 Estoque: <b>'+esc(m.stock)+' dose'+(Number(m.stock)===1?'':'s')+'</b> <button class="remove" onclick="replenishStock(\''+esc(m.id)+'\')">➕ REPOR</button></div>':'';
+    const timeHtml=times.map((x,i)=>'<span class="time-chip">⏰ '+esc(x)+' <button type="button" class="remove" onclick="deleteTime(\''+esc(m.id)+'\','+i+')">✕</button></span>').join("");
+    return '<div class="med"><div class="med-title">'+esc(m.name)+'</div><div class="med-sub">'+esc(m.dose)+(m.note?' · '+esc(m.note):'')+'</div><div class="small">Período: '+formatDateKey(m.startDate||"0000-01-01")+' até '+(m.endDate?formatDateKey(m.endDate):'sem término')+'</div><div class="small">Dias: '+esc(weekdayNames(m.weekdays))+'</div>'+stockHtml+stockAlert(m)+'<div class="times">'+timeHtml+'</div></div>';
+  }).join("");
+}
+function renderAll(){
+  /* Cada painel é atualizado isoladamente para que um erro não esconda os demais. */
+  try{renderMedicines();}catch(e){console.error("Erro na lista de medicamentos",e);showStatus("globalStatus","Não foi possível desenhar a lista. Os dados salvos não foram apagados.");}
+  try{renderToday();}catch(e){console.error("Erro nas doses de hoje",e);document.getElementById("today").innerHTML='<p class="empty">Erro ao atualizar as doses de hoje.</p>';}
+  try{renderHistory();}catch(e){console.error("Erro no histórico",e);document.getElementById("history").innerHTML='<p class="empty">Erro ao atualizar o histórico.</p>';}
+}
+function replenishStock(medId){
+  const list=load(), med=list.find(m=>m.id===medId);
+  if(!med)return;
+  const value=prompt("Quantas doses deseja adicionar ao estoque de "+med.name+"?","");
+  if(value===null)return;
+  const qty=Number.parseInt(String(value).trim(),10);
+  if(!Number.isInteger(qty)||qty<=0){alert("Informe uma quantidade inteira maior que zero.");return;}
+  med.stock=Number(med.stock||0)+qty;
+  if(save(list)){renderAll();alert("Estoque atualizado! Novo total: "+med.stock+" doses.");}
+}
+function deleteTime(medId,index){
+  const list=load(), med=list.find(m=>m.id===medId);
+  if(!med||!Array.isArray(med.times)||index<0||index>=med.times.length)return;
+  const time=med.times[index];
+  if(!confirm("Excluir o horário "+time+" deste medicamento?"))return;
+  med.times.splice(index,1);
+  if(med.times.length===0){
+    if(confirm("Este medicamento ficou sem horários. Deseja excluir o medicamento também?")){
+      const filtered=list.filter(m=>m.id!==medId);
+      if(!save(filtered))return;
+    }else if(!save(list))return;
+  }else if(!save(list))return;
+  renderAll();
+}
+function toggleTaken(medId,index){
+  const t=loadTaken(), id=medId+"|"+index+"|"+todayKey();
+  const list=load(), med=list.find(m=>m.id===medId);
+  if(t[id]){
+    delete t[id];
+    if(med&&med.stock!==null&&med.stock!==undefined)med.stock=Number(med.stock||0)+1;
+  }else{
+    if(med&&med.stock!==null&&med.stock!==undefined&&Number(med.stock)<=0){alert("Estoque zerado para este medicamento.");return;}
+    t[id]={takenAt:new Date().toISOString()};
+    if(med&&med.stock!==null&&med.stock!==undefined)med.stock=Math.max(0,Number(med.stock||0)-1);
+  }
+  if(!saveTaken(t))return;
+  if(!save(list)){return;}
+  renderAll();
+}
+document.getElementById("medicineForm").addEventListener("submit",addMedicine);
+migrateOldData();
+renderAll();
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("service-worker.js").catch(err=>console.warn("Service worker não registrado",err));
+  });
+}
+</script>
+</body>
+</html>
