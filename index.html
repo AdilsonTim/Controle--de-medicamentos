@@ -120,7 +120,20 @@ function migrateOldData(){
 }
 function load(){return JSON.parse(localStorage.getItem(KEY)||"[]")}
 function save(x){localStorage.setItem(KEY,JSON.stringify(x))}
-function loadTaken(){return JSON.parse(localStorage.getItem(TAKEN)||"{}")}
+function loadTaken(){
+  try{
+    const raw=localStorage.getItem(TAKEN)||"{}";
+    const data=JSON.parse(raw);
+    if(data && typeof data==="object" && !Array.isArray(data)) return data;
+    return {};
+  }catch(e){
+    const raw=localStorage.getItem(TAKEN);
+    if(raw!==null && localStorage.getItem(TAKEN+"_backup")===null){
+      try{localStorage.setItem(TAKEN+"_backup",raw)}catch(err){}
+    }
+    return {};
+  }
+}
 function saveTaken(x){localStorage.setItem(TAKEN,JSON.stringify(x))}
 migrateOldData();
 
