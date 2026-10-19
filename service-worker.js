@@ -1,6 +1,11 @@
-
-const CACHE_NAME = "controle-medicamentos-v6";
-const CORE_FILES = ["./", "./index.html"];
+const CACHE_NAME = "controle-medicamentos-v7";
+const CORE_FILES = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(
