@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "controle-medicamentos-v5";
+const CACHE_NAME = "controle-medicamentos-v6";
 const CORE_FILES = ["./", "./index.html"];
 
 self.addEventListener("install", event => {
